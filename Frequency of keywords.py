@@ -148,9 +148,9 @@ tfidf_scores = pd.DataFrame(
 )
 
 theme_counts = pd.DataFrame(index=df_un_merged.index)
-
 word_counts = word_counts.loc[:, (word_counts.sum(axis=0) > 0)]
 
+#group themes
 for theme, keywords in violence_keywords_themed.items():
     # sum across all matching columns (if the word exists in vocab)
     matching_cols = [w for w in keywords if w in word_counts.columns]
@@ -158,8 +158,17 @@ for theme, keywords in violence_keywords_themed.items():
         theme_counts[theme] = word_counts[matching_cols].sum(axis=1)
     else:
         theme_counts[theme] = 0
+        
+theme_tfidf = pd.DataFrame(index=df_un_merged.index)
+
+for theme, keywords in violence_keywords_themed.items():
+    matching_cols = [term.lower() for term in keywords if term.lower() in tfidf_scores.columns]
+    theme_tfidf[theme] = tfidf_scores[matching_cols].sum(axis=1)
+
 
 df_un_merged = pd.merge(df_un_merged, theme_counts, left_on= ["Year", "ISO-alpha3 Code"], right_on= ["Year", "ISO-alpha3 Code"], how="inner")
+df_un_merged = pd.merge(df_un_merged, word_counts, left_on= ["Year", "ISO-alpha3 Code"], right_on= ["Year", "ISO-alpha3 Code"], how="inner")
+df_un_merged = pd.merge(df_un_merged, theme_tfidf, left_on= ["Year", "ISO-alpha3 Code"], right_on= ["Year", "ISO-alpha3 Code"], how="inner")
 df_un_merged = pd.merge(df_un_merged, word_counts, left_on= ["Year", "ISO-alpha3 Code"], right_on= ["Year", "ISO-alpha3 Code"], how="inner")
 
 # Sum and sort values for wordcount and theme count
