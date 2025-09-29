@@ -17,6 +17,7 @@ from nltk import word_tokenize
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
+#%%
 # Example topic seeds
 violence_keywords_themed = {
     "general violence abuse": [
@@ -130,7 +131,7 @@ tfidfvectorizer = TfidfVectorizer(
     ngram_range=(1, 3),  
     token_pattern=r"(?u)\b\w[\w#@'-]+\b"
 )
-tfidf_mat = vectorizer.fit_transform(df_un_merged["Speech"])
+tfidf_mat = tfidfvectorizer.fit_transform(df_un_merged["Speech"])
 
 
 # Create a DataFrame of word counts
@@ -143,14 +144,18 @@ word_counts = pd.DataFrame(
 # create a dataframe of tf_idf
 tfidf_scores = pd.DataFrame(
     tfidf_mat.toarray(),
-    columns=vectorizer.get_feature_names_out(),
+    columns=tfidfvectorizer.get_feature_names_out(),
     index=df_un_merged.index
 )
 
-theme_counts = pd.DataFrame(index=df_un_merged.index)
+
+#remove columns of words that are not mentioned
 word_counts = word_counts.loc[:, (word_counts.sum(axis=0) > 0)]
+tfidf_scores = tfidf_scores.loc[:, (tfidf_scores.sum(axis=0) > 0)]
 
 #group themes
+theme_counts = pd.DataFrame(index=df_un_merged.index)
+
 for theme, keywords in violence_keywords_themed.items():
     # sum across all matching columns (if the word exists in vocab)
     matching_cols = [w for w in keywords if w in word_counts.columns]
@@ -165,17 +170,24 @@ for theme, keywords in violence_keywords_themed.items():
     matching_cols = [term.lower() for term in keywords if term.lower() in tfidf_scores.columns]
     theme_tfidf[theme] = tfidf_scores[matching_cols].sum(axis=1)
 
-
 df_un_merged = pd.merge(df_un_merged, theme_counts, left_on= ["Year", "ISO-alpha3 Code"], right_on= ["Year", "ISO-alpha3 Code"], how="inner")
 df_un_merged = pd.merge(df_un_merged, word_counts, left_on= ["Year", "ISO-alpha3 Code"], right_on= ["Year", "ISO-alpha3 Code"], how="inner")
-df_un_merged = pd.merge(df_un_merged, theme_tfidf, left_on= ["Year", "ISO-alpha3 Code"], right_on= ["Year", "ISO-alpha3 Code"], how="inner")
-df_un_merged = pd.merge(df_un_merged, word_counts, left_on= ["Year", "ISO-alpha3 Code"], right_on= ["Year", "ISO-alpha3 Code"], how="inner")
+df_un_merged = pd.merge(df_un_merged, theme_tfidf, left_on= ["Year", "ISO-alpha3 Code"], right_on= ["Year", "ISO-alpha3 Code"], how="inner", suffixes=('_counts', '_tfidf'))
+df_un_merged = pd.merge(df_un_merged, tfidf_scores, left_on= ["Year", "ISO-alpha3 Code"], right_on= ["Year", "ISO-alpha3 Code"], how="inner", suffixes=('_counts', '_tfidf'))
 
 # Sum and sort values for wordcount and theme count
 totalcounts = word_counts.sum(axis=0)
 totalcounts_sorted = totalcounts.sort_values(ascending=False)
 themetotalcounts = theme_counts.sum(axis=0)
 themetotalcounts_sorted = themetotalcounts.sort_values(ascending=False)
+
+# Sum and sort values for tf idf
+totaltfidf = tfidf_scores.sum(axis=0)
+totaltfidf_sorted = totaltfidf.sort_values(ascending=False)
+themetotaltfidf = theme_tfidf.sum(axis=0)
+themetotaltfidf_sorted = themetotaltfidf.sort_values(ascending=False)
+
+#%%
 
 # Plot wordcounts and theme counts
 plt.figure(0, figsize=(10, 6))
@@ -187,7 +199,6 @@ plt.xticks(rotation=45, ha="right")
 plt.tight_layout()
 plt.show()
 
-# Plot wordcounts and theme counts
 plt.figure(1, figsize=(10, 6))
 themetotalcounts_sorted.plot(kind="bar")
 plt.title("Keytheme Frequencies")
@@ -197,6 +208,45 @@ plt.xticks(rotation=45, ha="right")
 plt.tight_layout()
 plt.show()
 
+#plot idf scores and theme tfidf scores
+plt.figure(2, figsize=(10, 6))
+totaltfidf_sorted.plot(kind="bar")
+plt.title("Keyword tfidf")
+plt.ylabel("tfidf score")
+plt.xlabel("Keyword")
+plt.xticks(rotation=45, ha="right")
+plt.tight_layout()
+plt.show()
+
+plt.figure(3, figsize=(10, 6))
+themetotaltfidf_sorted.plot(kind="bar")
+plt.title("Keytheme tfidf")
+plt.ylabel("tfidf score")
+plt.xlabel("Theme")
+plt.xticks(rotation=45, ha="right")
+plt.tight_layout()
+plt.show()
+
+#%%
+
+theme_cols = list(violence_keywords_themed.keys())
+#comparing count over the years
+yearly_counts = df_un_merged.groupby('Year')[theme_cols].sum()
+
+plt.figure(4, figsize=(12,6))
+
+for theme in theme_cols:
+    plt.plot(yearly_counts.index, yearly_counts[theme], marker='o', label=theme)
+
+plt.title("Development of Theme Mentions in UN Speeches Over the Years")
+plt.xlabel("Year")
+plt.ylabel("Total Mentions")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+#calculating tf idf per year and plotting it over the years
 
 
 
