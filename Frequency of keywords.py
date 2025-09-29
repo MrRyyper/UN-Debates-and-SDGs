@@ -18,6 +18,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import textwrap
 
 #%%
 # Define theme → keywords mapping and derive a lowercase keyword list
@@ -341,8 +342,8 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
+#%%
 # Plot yearly per-keyword tf-idf lines (for terms that exist in the yearly vocab)
-
 plt.figure(7, figsize=(12,6))
 for col in tfidf_yearly.columns:
     if col in keywords:
@@ -355,6 +356,7 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
+#%%
 df_un_merged = df_un_merged.drop('Speech', axis = 1)
 
 #%%
@@ -406,10 +408,174 @@ plt.title("Total tfidf score of Keywords by Region Over Time")
 plt.xlabel("Year")
 plt.ylabel("Total tfidf")
 plt.legend(title="Region")
+plt.xlim((1990,2024))
 plt.grid(True)
 plt.show()
 
+#%%
+#Prettyplots
+#plot total mentions of violance against women
+total_mentions_by_year = (
+    mentions_by_region_year.groupby("Year")["total mentions"]
+    .sum()
+    .reset_index()
+)
 
+
+fig = plt.figure(10, figsize=(6,6))
+
+plt.plot(total_mentions_by_year["Year"], total_mentions_by_year["total mentions"], color="blue", label='Mentions of keywords')
+plt.title("Total Mentions of Violence-Related Keywords Over Time (All Regions)")
+plt.xlabel("Year")
+plt.ylabel("Total # of Mentions")
+plt.axvline(x=1990, color="grey", linestyle="--", linewidth=2, label="Legislation starts")
+
+plt.annotate(
+    "First laws implemented",         # the label text
+    xy=(1990, 30),                   # point to (x=1990, y=0 baseline)
+    xytext=(1950, total_mentions_by_year["total mentions"].max() * 0.7),  # text position
+    arrowprops=dict(facecolor="grey", lw=1.5),
+    fontsize=10, color="grey", fontweight="bold"
+)
+plt.legend(loc = 'upper left')
+plt.grid(True)
+caption = ("Fig. 1: This figure shows the rise of mentions of (sexual) violence keywords within the united nations general debates and how it coincides with the first legislations put into place.")
+
+wrapped_caption = "\n".join(textwrap.wrap(caption, width=65))  
+fig.text(0.12, 0.06, wrapped_caption,
+         ha="left", va="bottom", fontsize=10)
+
+plt.subplots_adjust(top=0.90, bottom=0.25)
+
+plt.show()
+
+#%%
+#plot regions related to beijing convention
+fig = plt.figure(11, figsize=(6,6))
+
+# Track whether we've already added the "Other regions" label
+other_label_added = False
+
+for region, subdf in mentions_by_region_year.groupby("Region Name"):
+    if region == 'Europe':
+        plt.plot(subdf["Year"], subdf["total mentions"], label=region, color='blue')
+    elif region == 'Asia':
+        plt.plot(subdf["Year"], subdf["total mentions"], label=region, color='red')
+    else:
+        if not other_label_added:
+            plt.plot(subdf["Year"], subdf["total mentions"], label='Other regions', color='grey')
+            other_label_added = True
+        else:
+            plt.plot(subdf["Year"], subdf["total mentions"], color='grey')
+
+plt.axvline(x=1995, color="green", linestyle="--", linewidth=2)
+
+plt.annotate(
+    "Beijing conference",         # the label text
+    xy=(1995, 15),                   # point to (x=1990, y=0 baseline)
+    xytext=(1982, 20),  # text position
+    arrowprops=dict(facecolor="green", lw=1.5),
+    fontsize=10, color="green", fontweight="bold"
+)
+
+plt.title("Total mentions of Violence related keywords per region 1980-2010")
+plt.xlabel("Year")
+plt.ylabel("Total # of Mentions")
+plt.xlim((1980,2010))
+plt.legend(title="Region")
+plt.grid(True)
+
+caption = ("Fig. 2: This figure shows the peaks of mentioned keywords related to (sexual) violence against women around the World Conference on Women in Beijing. It shows a peak in Asia before, which could already have been preparing for the conference, and a peak in Europe after, which could have been a reaction to the conference.")
+
+
+wrapped_caption = "\n".join(textwrap.wrap(caption, width=65))  
+fig.text(0.12, 0.06, wrapped_caption,
+         ha="left", va="bottom", fontsize=10)
+
+plt.subplots_adjust(top=0.90, bottom=0.30)
+
+
+plt.show()
+
+#%%
+#Prettyplot of chosen keywords
+chosen_words = ['sexual exploitation','gender based violence','sexual violence']
+fig = plt.figure(12, figsize=(12,6))
+for col in tfidf_yearly.columns:
+    if col in chosen_words:
+        plt.plot(tfidf_yearly.index, tfidf_yearly[col], label=col)
+
+plt.title("TF-IDF Scores of sexual exploitation, gender based violence and sexual violence in UN Speeches")
+plt.xlabel("Year")
+plt.ylabel("TF-IDF Scores")
+plt.xlim((1990,2025))
+
+plt.grid(True)
+plt.annotate(
+    "Istanbul Convention\n(2013)", 
+    xy=(2013, tfidf_yearly['sexual violence'].loc[2013]), 
+    xytext=(2005, tfidf_yearly.max().max() * 0.75),
+    arrowprops=dict(facecolor="black", arrowstyle="->", lw=1.2),
+    fontsize=9, color="black", fontweight="bold"
+)
+
+# #MeToo Movement (2017 peak in sexual exploitation)
+plt.annotate(
+    "#MeToo movement (2017)",
+    xy=(2017, tfidf_yearly['sexual exploitation'].loc[2017]),
+    xytext=(2018, tfidf_yearly.max().max() * 0.80),
+    arrowprops=dict(facecolor="black", arrowstyle="->", lw=1.2),
+    fontsize=9, color="black", fontweight="bold"
+)
+
+# COVID-19 & GBV increase (2020)
+plt.annotate(
+    "COVID-19 lockdown (2020)",
+    xy=(2020, tfidf_yearly['gender based violence'].loc[2020]),
+    xytext=(2018, tfidf_yearly.max().max() * 0.55),
+    arrowprops=dict(facecolor="black", arrowstyle="->", lw=1.2),
+    fontsize=9, color="black", fontweight="bold"
+)
+plt.legend(loc='upper left')
+
+caption = (
+    "Fig. 3: The most notable spikes of keywords that seem related to global events. Mentions of "
+    "sexual exploitation peak in 2017 during the #MeToo movement. Gender based "
+    "violence was most prominent in 2020, linked to increased violence during "
+    "COVID-19 lockdowns. Sexual violence spikes "
+    "in 2013–2014 align with the Istanbul Convention's implementation."
+)
+wrapped_caption = "\n".join(textwrap.wrap(caption, width=120))
+fig.text(0.12, 0.05, wrapped_caption, ha="left", va="bottom", fontsize=10)
+
+plt.subplots_adjust(top=0.88, bottom=0.20)
+
+plt.show()
+
+#%%
+
+#plot
+fig = plt.figure(14, figsize=(12,6))
+
+for region, subdf in tfidf_by_region_year.groupby("Region Name"):
+    plt.plot(subdf["Year"], subdf["total tfidf"], label=region)
+
+plt.title("Total tf idf score by Region 1990-2024")
+plt.xlabel("Year")
+plt.ylabel("Total tf-idf")
+plt.legend(title="Region")
+plt.xlim((1990,2024))
+plt.grid(True)
+
+caption = (
+    "Figure 4. Regional trends in total TF-IDF scores for references to violence against women over the past three decades. Europe consistently shows the highest frequency since 2005, though declining in recent years. America, Asia, and Africa exhibit slightly lower levels, with a notable spike around the Istanbul Convention. Africa displays a distinct increase in 2020 during the COVID-19 pandemic. Oceania consistently records the lowest scores, particularly over the past five years."
+)
+wrapped_caption = "\n".join(textwrap.wrap(caption, width=120))
+fig.text(0.12, 0.05, wrapped_caption, ha="left", va="bottom", fontsize=10)
+
+plt.subplots_adjust(top=0.88, bottom=0.25)
+
+plt.show()
 
 
 
